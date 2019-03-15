@@ -1,26 +1,36 @@
 version: '3.7'
 services:
   prometheus:
-    image: prom/prometheus:v2.5.0
+    image: prom/prometheus:v2.7.2
     restart: unless-stopped
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml
+    command: [ "--config.file=/etc/prometheus/prometheus.yml",
+             "--storage.tsdb.path=/prometheus",
+             "--web.console.libraries=/usr/share/prometheus/console_libraries",
+             "--web.console.templates=/usr/share/prometheus/consoles",
+             "--storage.tsdb.retention.time=96h" ]
     ports:
       - 9090:9090
-  prom-node-export:
-    image: prom/node-exporter:v0.16.0
-    restart: unless-stopped
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+  node-exporter:
+    image: prom/node-exporter:v0.17.0
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:6.0.1
+    restart: unless-stopped
     ports:
-      - 9100:9100
-  # grafana:
-  #   image: grafana/grafana:5.3.4
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./grafana.ini:/etc/prometheus/grafana.ini
-  #   ports:
-  #     - 3000:3000
-  #   depends_on:
-  #     - prometheus
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+      - GF_SECURITY_SECRET_KEY=123214dad
+
+      - GF_INSTALL_PLUGINS=grafana-simple-json-datasource
+    volumes:
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./grafana/node-exporter.json:/var/lib/grafana/dashboards/node-exporter.json
+
+networks:
+  default:
+    name: nginx
